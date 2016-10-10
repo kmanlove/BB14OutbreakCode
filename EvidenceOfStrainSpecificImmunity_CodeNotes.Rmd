@@ -1,0 +1,703 @@
+---
+title: "Evidence for strain-specific immunity in bighorn sheep"
+author: "Frances Cassirer, Kezia Manlove, Raina Plowright, Tom Besser"
+date: "10/10/2016"
+output: html_document
+---
+
+This file contains the code to recreate Figure 1 and corresponding analyses presented in Cassirer et al. 2016, Evidence for strain-specific immunity in bighorn sheep, Journal of Wildlife Management. 
+
+### Bring in necessary packages
+```{r, message = F}
+require(survival)
+require(lattice)
+```
+
+### Read in data
+```{r}
+bb <- read.csv("~/work/Kezia/Research/FieldStudies/HCBighornContactStudies/Data/RelocationData/BlackButteLocationsFinal_20July2014.csv", header = T, sep = "\t")
+
+bb$UTMN <- bb$Longitude
+bb$UTME <- bb$Latitude
+bb$DATE <- bb$Date
+
+#-- pull out Uncollared nonunicorn --#
+bb <- subset(bb, !(EWEID == ""))
+bb$EWEID <- factor(bb$EWEID)
+```
+
+## Figure 1 
+### Figure 1, Row 1: 2013 observation and symptom stripplots  
+
+```{r, fig.height = 2, fig.width = 6}
+#-- BB 2013 --#
+health.color2 <- c("black", rgb(1, 1, 1, alpha = 0), "black", 
+                   rgb(1, 1, 1, alpha = 0), rgb(1, 1, 1, alpha = 0), "black")
+
+lamb.health.color2 <- c(rgb(1, 1, 1, alpha = 0), "black", "black")
+
+bb2013 <- subset(bb, Year == 2013)
+bb2013$EWEID <- factor(bb2013$EWEID)
+
+# Cut down to just Heller Bar ewes
+
+heller.ewes <- c("06BB10", "06BB12", "06BB13", "11LK36")
+bb2013.heller <- subset(bb2013, as.character(EWEID) %in% heller.ewes)
+bb2013.heller$EWEID <- factor(bb2013.heller$EWEID)
+
+bb3 <- read.csv("./Data/HellerBar_alldata_May_Oct_2013_2014.csv", header = T)
+bb3 <- subset(bb3, Year == 2013 & AnimalID %in% heller.ewes)
+bb3$EWEID <- factor(bb3$AnimalID, levels = heller.ewes)
+
+bb2013.lambobs <- subset(bb2013.heller, Lamb.Status %in% 
+                           c("Lamb Bedded", 
+                             "Lamb Bedded Together", 
+                             "Lamb Body Contact", 
+                             "Lamb Nursed"))
+
+#svg("./Plots/FullSymptomsPlot2013_20160216.svg", height = 1.8, width = 8)
+par(mfrow = c(1, 2), oma = c(1, 1, 0, 0), mar = c(4, 6, 1, 1))
+plot(as.numeric(factor(bb2013.heller$EWEID)) ~ 
+       as.numeric(as.character(bb2013.heller$JulianDate)), 
+     cex = 1.2, pch = 16, ylim = c(1, 4), 
+     col = health.color2[bb2013.heller$Ewe.Health], 
+     xlab = "Julian Date", 
+     yaxt = "n", ylab = "", xlim = c(121, 270), xaxt = "n")
+points(as.numeric(bb3$EWEID) ~ as.numeric(as.character(bb3$JulianDate)), 
+     cex = .5, pch = 1, col = "grey60")
+points(as.numeric(factor(bb2013.heller$EWEID)) ~ 
+         as.numeric(as.character(bb2013.heller$JulianDate)), 
+       cex = 1.2, pch = 16,
+       col = health.color2[bb2013.heller$Ewe.Health])
+axis(las = 1, side = 1, at = 120 + c(0, 31, 61, 92, 123), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+axis(side = 2, line = 1, outer = F, las = 1, at = seq(1:4), 
+     labels = levels(factor(bb2013.heller$EWEID)))
+
+plot(as.numeric(factor(bb2013.lambobs$EWEID)) ~ 
+       as.numeric(as.character(bb2013.lambobs$JulianDate)), 
+     cex = 1, pch = 16, col = "white", xlab = "Julian Date", 
+     yaxt = "n", ylab = "", xlim = c(121, 270), xaxt = "n")
+points(as.numeric(factor(bb2013.lambobs$EWEID)) ~ 
+         as.numeric(as.character(bb2013.lambobs$JulianDate)), 
+       cex = ifelse(bb2013.lambobs$Symptomatic.Lamb == 2, 
+                    0, 
+                    .5), 
+       pch = 1, 
+       col = "grey60")
+points(as.numeric(factor(bb2013.lambobs$EWEID)) ~ 
+         as.numeric(as.character(bb2013.lambobs$JulianDate)), 
+       cex = ifelse(bb2013.lambobs$Symptomatic.Lamb == 1, 
+                    1.2, 
+                    0), 
+       pch = 16, 
+       col = ifelse(bb2013.lambobs$Symptomatic.Lamb == 1, 
+                    "black", 
+                    "white"))
+axis(side = 2, line = 1, outer = F, las = 1, at = seq(1:4), 
+     labels = levels(factor(bb2013.heller$EWEID)))
+axis(las = 1, side = 1, at = 120 + c(0, 31, 61, 92, 123), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+
+polygon(x = c(137, 137, 191, 191), y = c(8.75, 9.25, 9.25, 8.75), col = "grey80", 
+        border = "grey80")
+#text(x = 141, y = 9, "Ewe Died")
+polygon(x = c(120, 120, 140, 140), y = c(0.75, 1.25, 1.25, 0.75), col = "grey80", 
+         border = "grey80")
+polygon(x = c(181, 181, 270, 270), y = c(0.75, 1.25, 1.25, 0.75), col = "grey80", 
+        border = "grey80")
+
+polygon(x = c(120, 120, 133, 133), y = c(1.75, 2.25, 2.25, 1.75), col = "grey80", 
+        border = "grey80")
+polygon(x = c(179, 179, 270, 270), y = c(1.75, 2.25, 2.25, 1.75), col = "grey80", 
+        border = "grey80")
+
+polygon(x = c(120, 120, 137, 137), y = c(2.75, 3.25, 3.25, 2.75), col = "grey80", 
+        border = "grey80")
+polygon(x = c(163, 163, 270, 270), y = c(2.75, 3.25, 3.25, 2.75), col = "grey80", 
+        border = "grey80")
+
+polygon(x = c(120, 120, 125, 125), y = c(3.75, 4.25, 4.25, 3.75), col = "grey80", 
+        border = "grey80")
+polygon(x = c(180, 180, 270, 270), y = c(3.75, 4.25, 4.25, 3.75), col = "grey80", 
+        border = "grey80")
+
+mtext(side = 2, line = 0, outer = T, "Ewe ID")
+#dev.off()
+
+```
+
+### Build 2014 observation and symptom stripplot
+```{r}
+#-- 2014 stripplot --#
+bb2014 <- subset(bb, Year == 2014)
+bb2014$EWEID <- factor(bb2014$EWEID)
+bb2 <- read.csv("./Data/HellerBar_alldata_May_Oct_2013_2014.csv", header = T)
+bb2 <- subset(bb2, JulianDate >= 190 & Year == 2014 & AnimalID != "" & 
+                AnimalID != ".")
+bb2$AnimalID <- ifelse(as.character(bb2$AnimalID) == "14BB53", "14AS52", 
+                       as.character(bb2$AnimalID))
+bb2$EWEID <- factor(bb2$AnimalID, levels = levels(factor(bb2014$EWEID)))
+
+new.symp.dates <- c(192, 192, 192, 194, 195, 202, 211, 212)
+new.symp.animal.ids <- c("06BB13", "11LK36", "14BB03", "06BB12", "06BB10",
+                    "14BB04", "14BB02", "14BB02")
+new.symp.animal.ids <- c(3, 4, 7, 2, 1, 8, 6, 6)
+
+# svg("./Plots/FullSymptomsPlot_20160216.svg", height = 3, width = 8)
+par(mfrow = c(1, 2), oma = c(1, 1, 0, 0), mar = c(4, 6, 1, 1))
+plot(as.numeric(factor(bb2014$EWEID)) ~ as.numeric(as.character(bb2014$JulianDate)), 
+     cex = .5, pch = 1, col = "grey60", 
+     xlab = "Julian Date", yaxt = "n", ylab = "", xlim = c(121, 270), xaxt = "n")
+points(as.numeric(bb2$EWEID) ~ as.numeric(as.character(bb2$JulianDate)),  
+       cex = .5, pch = 1, col = "grey60")
+
+points(as.numeric(factor(bb2014$EWEID)) ~ as.numeric(as.character(bb2014$JulianDate)), 
+     cex = 1.2, pch = 16, col = health.color2[bb2014$Ewe.Health])
+
+# Add Frances's extra points manually
+points(new.symp.animal.ids ~ new.symp.dates, pch = 16, col = "black", cex = 1.2)
+axis(side = 2, line = 1, outer = F, las = 1, at = seq(1:12), 
+     labels = levels(factor(bb2014$EWEID)))
+axis(las = 1, side = 1, at = 120 + c(0, 31, 61, 92, 123), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+polygon(x = c(137, 137, 270, 270), y = c(8.75, 9.25, 9.25, 8.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(178, 178, 270, 270), y = c(10.75, 11.25, 11.25, 10.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(197, 197, 270, 270), y = c(0.75, 1.25, 1.25, 0.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(208, 208, 270, 270), y = c(7.75, 8.25, 8.25, 7.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(215, 215, 270, 270), y = c(5.75, 6.25, 6.25, 5.75), 
+        col = "grey80", border = "grey80")
+mtext(side = 2, line = 0, outer = T, "Ewe ID")
+
+bb2014.lambobs <- subset(bb2014, Lamb.Status %in% 
+                           c("Lamb Bedded", 
+                             "Lamb Bedded Together", 
+                             "Lamb Body Contact", 
+                             "Lamb Nursed"))
+plot(as.numeric(bb2014.lambobs$EWEID) ~ 
+       as.numeric(as.character(bb2014.lambobs$JulianDate)),
+     cex = ifelse(bb2014.lambobs$Symptomatic.Lamb == 2, 
+                  0, 
+                  bb2014.lambobs$Symptomatic.Lamb * 1.2), 
+     pch = 16, col = health.color2[bb2014.lambobs$Ewe.Health], 
+     xlab = "Julian Date", 
+     yaxt = "n", ylab = "", 
+     xlim = c(121, 270), xaxt = "n", ylim = c(1, 12))
+points(as.numeric(bb2014.lambobs$EWEID) ~ 
+         as.numeric(as.character(bb2014.lambobs$JulianDate)),
+       cex = .5, 
+       pch = 1, col = "grey60")
+points(as.numeric(bb2014.lambobs$EWEID) ~ as.numeric(as.character(bb2014.lambobs$JulianDate)),
+     cex = ifelse(bb2014.lambobs$Symptomatic.Lamb == 2, 
+                  0, 
+                  bb2014.lambobs$Symptomatic.Lamb * 1.2), 
+     pch = 16, col = health.color2[bb2014.lambobs$Ewe.Health])
+points(as.numeric(bb2014.lambobs$EWEID) ~ 
+         as.numeric(as.character(bb2014.lambobs$JulianDate)), 
+       cex = ifelse(bb2014.lambobs$Symptomatic.Lamb == 2, 0, 
+                    bb2014.lambobs$Symptomatic.Lamb * 1.2), pch = 16, 
+       col = lamb.health.color2[as.numeric(bb2014.lambobs$Symptomatic.Lamb) + 1])
+
+points(as.numeric(bb2014.lambobs$EWEID) ~ 
+         as.numeric(as.character(bb2014.lambobs$JulianDate)),
+     cex = ifelse(bb2014.lambobs$Symptomatic.Lamb == 2, 
+                  0, 
+                  bb2014.lambobs$Symptomatic.Lamb * 1.2), 
+     pch = 16, col = health.color2[bb2014.lambobs$Ewe.Health])
+axis(side = 2, line = 1, outer = F, las = 1, at = seq(1:12), 
+     labels = levels(factor(bb2014$EWEID)))
+axis(las = 1, side = 1, at = 120 + c(0, 31, 61, 92, 123), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+polygon(x = c(137, 137, 270, 270), y = c(8.75, 9.25, 9.25, 8.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(178, 178, 270, 270), y = c(10.75, 11.25, 11.25, 10.75), 
+        col = "grey80", border = "grey80")
+mtext(side = 2, line = 0, outer = T, "Ewe ID")
+# 06BB10
+polygon(x = c(120, 120, 137, 137), y = c(.75, 1.25, 1.25, .75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(139, 139, 270, 270), y = c(.75, 1.25, 1.25, .75), 
+        col = "grey80", border = "grey80")
+# 06BB12
+polygon(x = c(183, 183, 270, 270), y = c(1.75, 2.25, 2.25, 1.75), 
+        col = "grey80", border = "grey80")
+# 06BB13
+polygon(x = c(120, 120, 132, 132), y = c(2.75, 3.25, 3.25, 2.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(177, 177, 270, 270), y = c(2.75, 3.25, 3.25, 2.75), 
+        col = "grey80", border = "grey80")
+# 11LK36
+polygon(x = c(120, 120, 132, 132), y = c(3.75, 4.25, 4.25, 3.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(178, 178, 270, 270), y = c(3.75, 4.25, 4.25, 3.75), 
+        col = "grey80", border = "grey80")
+# 14AS52
+polygon(x = c(120, 120, 125, 125), y = c(4.75, 5.25, 5.25, 4.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(163, 163, 270, 270), y = c(4.75, 5.25, 5.25, 4.75), 
+        col = "grey80", border = "grey80")
+# 14BB02
+polygon(x = c(120, 120, 133, 133), y = c(5.75, 6.25, 6.25, 5.75), 
+        col = "grey80", border = "grey80")
+polygon(x = c(167, 167, 270, 270), y = c(5.75, 6.25, 6.25, 5.75), 
+        col = "grey80", border = "grey80")
+# 14BB03
+polygon(x = c(177, 177, 270, 270), y = c(6.75, 7.25, 7.25, 6.75), 
+        col = "grey80", border = "grey80")
+# 14BB04
+polygon(x = c(120, 120, 131, 131), y = c(7.75, 8.25, 8.25, 7.75), col = "grey80", border = "grey80")
+polygon(x = c(183, 183, 270, 270), y = c(7.75, 8.25, 8.25, 7.75), col = "grey80", border = "grey80")
+# 14BB05
+polygon(x = c(120, 120, 270, 270), y = c(8.75, 9.25, 9.25, 8.75), col = "grey80", border = "grey80")
+# 14BB07
+polygon(x = c(120, 120, 125, 125), y = c(9.75, 10.25, 10.25, 9.75), col = "grey80", border = "grey80")
+polygon(x = c(173, 173, 270, 270), y = c(9.75, 10.25, 10.25, 9.75), col = "grey80", border = "grey80")
+# 14BB09
+polygon(x = c(120, 120, 123, 123), y = c(10.75, 11.25, 11.25, 10.75), col = "grey80", border = "grey80")
+polygon(x = c(145, 145, 270, 270), y = c(10.75, 11.25, 11.25, 10.75), col = "grey80", border = "grey80")
+# 14BB17
+polygon(x = c(120, 120, 125, 125), y = c(11.75, 12.25, 12.25, 11.75), col = "grey80", border = "grey80")
+polygon(x = c(163, 163, 270, 270), y = c(11.75, 12.25, 12.25, 11.75), col = "grey80", border = "grey80")
+#dev.off()
+```
+
+### Figure 1, Row 2: Survival curves
+Read in data. 
+```{r}
+bb <- read.csv("./Data/HellerBar_alldata_May_Oct_2013_2014.csv", header = T)
+
+bb$UTMN <- bb$Longitude
+bb$UTME <- bb$Latitude
+bb$DATE <- bb$Date
+bb$EWEID <- bb$AnimalID
+
+# pull out Uncollared nonunicorn
+bb <- subset(bb, !(EWEID == "")) 
+   # subsets bb dataset so that anybody with EWEID == "" gets removed
+bb$EWEID <- factor(bb$EWEID) 
+   # rewrites the EWEID variable as a categorical variable
+
+# separate 2013 and 2014 data
+bb2014 <- subset(bb, Year == 2014)
+bb2014$EWEID <- factor(bb2014$EWEID)
+
+bb2013 <- subset(bb, Year == 2013)
+bb2013$EWEID <- factor(bb2013$EWEID)
+```
+Mortality hazards for ewes and lambs over summer
+
+```{r}
+# tabulate number at risk and number events at each death date
+ad.time1 <- rep(120, 13)
+  # study starts with 13 ewes on May 1 (Julian date 120)
+#ad.time2 <- c(137, 178, 197, 215, 208, 215, rep(275, 7))
+ad.time2 <- c(137, 178, 197, 208, 215, rep(275, 8))
+# these mortality dates are pulled from notes on ewe mortality dates
+  # not included in bb location data per se. 275 is Julian date for October 1
+ad.event <- c(rep(1, 5), rep(0, 8))
+  # first 5 end dates in ad.time2 are deaths ("events"), last 8 are censored
+ad.data <- as.data.frame(cbind(ad.time1, ad.time2, ad.event))
+  # bind the start (ad.time1), end (ad.time2), and event status (ad.event)
+  # vectors together into a dataframe named ad.data
+
+# tabulate number lambs at risk, and number events at each lamb death date
+lamb.time1 <- c(117, 117, 123, 125, 125, 125, 131, 132, 132, 132, 137)
+lamb.time2 <- c(183, 178, 145, 173, 163, 163, 183, 177, 175, 167, 139)
+
+lamb.event <- rep(1, length(lamb.time1))
+lamb.data <- as.data.frame(cbind(lamb.time1, lamb.time2, lamb.event))
+
+# follow the same basic protocol to build survival data 
+# (start time, stop time, event status) for 2004-2013.
+  # adults  @ Heller Bar 2004-2013
+  # 06BB06 # first summer 2006; dls 8/22/2007; 1 full summer
+  # 06BB10 # first summer 2006; 8 full summers
+  # 06BB11 # first summer 2006; dls 07/01/08; 2 full summers
+  # 06BB12 # first summer 2006; 8 full summers
+  # 06BB13 # first summer 2006; 8 full summers
+
+# ALL 2004-2013 ewes
+ad.time1.2013 <- rep(120, 29)
+ad.time2.2013 <- c(182, 230, rep(270, 27))
+ad.event.2013 <- c(rep(1, 2), rep(0, 27))
+ad.data.2013 <- as.data.frame(cbind(ad.time1.2013, ad.time2.2013, ad.event.2013))
+
+# ONLY 2013 ewes
+ad.time1.2013 <- rep(120, 4)
+ad.time2.2013 <- rep(270, 4)
+ad.event.2013 <- rep(0, 4)
+ad.data.2013 <- as.data.frame(cbind(ad.time1.2013, ad.time2.2013, ad.event.2013))
+
+# build lamb survival data @ Heller Bar 2004-2013
+# pull in my own 2013 lamb survival data
+lamb.time1.2013 <- c(140, 140, 137, 125)
+lamb.time2.2013 <- c(181, 179, 163, 180)
+lamb.event.2013 <- rep(1, length(lamb.time1.2013))
+lamb.data.2013 <- as.data.frame(cbind(lamb.time1.2013, lamb.time2.2013, lamb.event.2013))
+# add in data from 2004-2012 from merged lamb data
+# read in merged lamb data
+merged.lambs <- read.csv("./Data/MergedLambData_100311_netupdate_revisedForBB11And12.csv", header = T)
+merged.heller <- subset(merged.lambs, EWEID %in% c("06BB06", "06BB10", "06BB12", 
+                                                   "06BB11", "06BB12", "06BB13"))
+merged.heller$Julian.birth <- c(125, 129, 129, 136, 136, 129, 129, 129, 117, 
+                                128, 136, 129, 131, 138, 121, 127, 133, 124, 
+                                125, 141, NA, 125, 134)
+pre.2013.lamb.morts <- merged.heller$Julian.birth + merged.heller$SURV_DAYS
+lamb.time1.2013 <- c(lamb.time1.2013, merged.heller$Julian.birth[c(-21)])
+lamb.time2.2013 <- c(lamb.time2.2013, pre.2013.lamb.morts[c(-21)])
+lamb.event.2013 <- c(lamb.event.2013, merged.heller$CENSOR2[c(-21)])
+lamb.data.2013 <- as.data.frame(cbind(lamb.time1.2013, lamb.time2.2013, lamb.event.2013))
+
+# # build histograms of mort date for 2014 and 2004-2013
+# par(mfrow = c(2, 1))
+# breaks.in <- seq(120, 280, length.out = 17)
+# hist(lamb.time2.2013, xlim = c(120, 240), breaks = breaks.in, 
+#      xlab = "Julian date of lamb mortalities", main = "2004-2013", col = "grey60")
+# hist(lamb.time2, xlim = c(120, 240), breaks = breaks.in, 
+#      xlab = "Julian date of lamb mortalities", main = "2014", col = "grey60")
+```
+
+### Figure 1, Row 3: Ewe and lamb mortality hazards
+Cox PH model for adults/lambs
+
+```{r}
+# 1. pull adult survival data from 2013 and 2014 into one dataframe to plug into
+  # Cox proportional hazards model
+ad.full.time1 <- c(ad.time1.2013, ad.time1)
+ad.full.time2 <- c(ad.time2.2013, ad.time2)
+ad.full.event <- c(ad.event.2013, ad.event)
+  # build an indicator variable for year (2004-2013 = 0; 2014 = 1)
+ad.full.year <- c(rep(0, length(ad.event.2013)), rep(1, length(ad.event)))
+
+  # 2. use survfit function to tabulate adult data to build Kaplan-Meier curves below
+ad.survfit <- survfit(Surv(ad.full.time1, ad.full.time2, ad.full.event) ~ factor(ad.full.year))
+ad.survfit.2013 <- survfit(Surv(ad.time1.2013, ad.time2.2013, ad.event.2013) ~ 1)
+ad.survfit.2014 <- survfit(Surv(ad.time1, ad.time2, ad.event) ~ 1)
+
+  # 3. fit Cox proportional hazards model for adults with "ad.full.year" as a predictor
+coxph.ad <- coxph(Surv(ad.full.time1, ad.full.time2, ad.full.event) ~ factor(ad.full.year))
+summary(coxph.ad) 
+  # results from log-rank test are in the row with column labels "coef", "exp(coef)",
+  # "se(coef)", "z", "Pr(>|z|)". The last one is the p-value. 
+
+# combine 2014 and 2004-2013 lamb data and build Cox PH model for lambs
+lamb.full.time1 <- c(lamb.time1.2013, lamb.time1)
+lamb.full.time2 <- c(lamb.time2.2013, lamb.time2)
+lamb.full.event <- c(lamb.event.2013, lamb.event)
+lamb.full.year <- c(rep(0, length(lamb.event.2013)), rep(1, length(lamb.event)))
+
+lamb.survfit <- survfit(Surv(lamb.full.time1, lamb.full.time2, lamb.full.event) ~ factor(lamb.full.year))
+lamb.survfit.2013 <- survfit(Surv(lamb.time1.2013, lamb.time2.2013, lamb.event.2013) ~ 1)
+lamb.survfit.2014 <- survfit(Surv(lamb.time1, lamb.time2, lamb.event) ~ 1)
+
+coxph.lambs <- coxph(Surv(lamb.full.time1, lamb.full.time2, lamb.full.event) ~ factor(lamb.full.year))
+summary(coxph.lambs)
+```
+
+### Plot Kaplan-Meier curves for adults and lambs, 2014 and 2004-2013
+
+```{r, fig.height = 4, fig.width = 6}
+# svg("./Plots/KaplanMeierCurves_20160130.svg", width = 8, height = 4)
+par(mfrow = c(1, 2)) # specify plot is two panels in one row
+# build adult Kaplan-Meier curves
+plot(ad.survfit, conf.int = T, xlab = "Date", ylab = "Survival", 
+      xlim = c(120, 250), col = c("grey60", "black"), lwd = c(1, 1), 
+     xaxt = "n")
+lines(ad.survfit, conf.int = F, xlab = "Date", ylab = "", 
+     main = "Ewes", xlim = c(120, 250), col = c("grey60", "black"), lwd = c(2, 2))
+
+# build legend and label x-axis with actual dates (as opposed to Julian)
+leg.text <- c("2014", "2004-2013")
+legend("bottomleft", leg.text, col = c("black", "grey60"), bty = "n", lwd = c(2, 2))
+axis(side = 1, at = c(120, 151, 181, 212, 243), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+
+# build lamb Kaplan-Meier curves
+#svg("./Plots/LambSurvCurvesRevised_20160616.svg", width = 4, height = 5)
+plot(lamb.survfit, conf.int = T, xlab = "Date", ylab = "Survival", 
+     xlim = c(120, 250), col = c("grey60", "black"), xaxt = "n")
+lines(lamb.survfit, conf.int = F, xlab = "Date", ylab = "", 
+     xlim = c(120, 250), col = c("grey60", "black"), lwd = c(2, 2))
+# label x-axis
+axis(side = 1, at = c(120, 151, 181, 212, 243), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+# dev.off()
+```
+Alternative version
+```{r, fig.height = 4, fig.width = 6}
+par(mfrow = c(1, 2))
+plot(lamb.survfit.2013, conf.int = T, xlab = "Date", ylab = "Survival", 
+     xlim = c(120, 250), col = c("grey60", "black"), xaxt = "n", main = "2013")
+lines(lamb.survfit.2013, conf.int = F, xlab = "Date", ylab = "", 
+      xlim = c(120, 250), col = c("grey60", "black"), lwd = c(2, 2))
+plot(lamb.survfit.2014, conf.int = T, xlab = "Date", ylab = "Survival", 
+     xlim = c(120, 250), col = c("grey60", "black"), xaxt = "n", main = "2014")
+lines(lamb.survfit.2014, conf.int = F, xlab = "Date", ylab = "", 
+      xlim = c(120, 250), col = c("grey60", "black"), lwd = c(2, 2))
+
+```
+
+### Figure 1, Row 3. Moving average clinical signs
+
+```{r, fig.height = 4, fig.width = 6}
+bb2013$EweClinicalSignsDailyScore <- bb2013$Ewe_Symptomfc
+
+# extract ewe-specific data. all data from each ewe becomes an element in a list
+# with as many elements as there are collared ewes (4 in 2013). 
+ewe.list.2013 <- vector("list", length(levels(bb2013$EWEID)))
+for(i in 1:length(ewe.list.2013)){ # loop over 4 EWEIDs present in 2013
+  ewe.list.2013[[i]] <- subset(bb2013, EWEID == levels(bb2013$EWEID)[i])
+  # extract all 2013 data associated with each ewe
+}
+
+# build matrix that is days x ewes; calculate seven-day moving average for each 
+# ewe over study timespan
+mov.avg.mat.2013 <- matrix(NA, ncol = range(bb2014$JulianDate)[2] - range(bb2014$JulianDate)[1], 
+                           nrow = length(levels(bb2013$EWEID)))
+for(i in 1:dim(mov.avg.mat.2013)[1]){ # loop over each of the four 2013 ewes
+  ewe.dat.2013 <- ewe.list.2013[[i]]
+  for(j in 1:(range(bb2014$JulianDate)[2] - range(bb2014$JulianDate)[1] - 6)){
+    # loop over each block of 7 days across the timespan of the study
+    mov.avg.mat.2013[i, j] <- mean(na.omit(subset(ewe.dat.2013, 
+                                                  JulianDate %in% seq(122 + j - 3, 122 + j + 3))$EweClinicalSignsDailyScore))
+    # get the mean clinical score for each ewe over each 7-day window
+    mov.avg.mat.2013[i, j] <- ifelse(is.na(mov.avg.mat.2013[i, j]) == T, 0, mov.avg.mat.2013[i, j])    
+    # replace "NA" clinical scores with "0"'s
+  }
+}
+
+# get clinical sign scores from 2013 aggregated over all 4 collared ewes
+# by summing up each ewe's score for each 7-day window and dividing by 4
+aggregate.clin.signs.2013 <- apply(mov.avg.mat.2013, 2, sum) / 4
+
+# 2014: rinse and repeat procedure outlined above. 
+
+bb2014$EweClinicalSignsDailyScore <- bb2014$Ewe_Symptomfc
+
+# extract ewe-specific data
+ewe.list <- vector("list", length(levels(bb2014$EWEID)))
+for(i in 1:length(ewe.list)){
+  ewe.list[[i]] <- subset(bb2014, EWEID == levels(bb2014$EWEID)[i])
+}
+
+# build matrix that is days x ewes; calculate seven-day moving average for each ewe over range of study
+mov.avg.mat <- matrix(NA, ncol = range(bb2014$JulianDate)[2] - range(bb2014$JulianDate)[1], 
+                      nrow = length(levels(bb2014$EWEID)))
+for(i in 1:dim(mov.avg.mat)[1]){
+  ewe.dat <- ewe.list[[i]]
+  for(j in 1:(range(bb2014$JulianDate)[2] - range(bb2014$JulianDate)[1] - 6)){
+    mov.avg.mat[i, j] <- mean(na.omit(subset(ewe.dat, 
+                                             JulianDate %in% seq(122 + j - 3, 122 + j + 3))$EweClinicalSignsDailyScore))
+    mov.avg.mat[i, j] <- ifelse(is.na(mov.avg.mat[i, j]) == T, 0, mov.avg.mat[i, j])    
+  }
+}
+
+aggregate.clin.signs <- apply(mov.avg.mat, 2, sum) / 12
+
+bb2013$LambClinicalSignsDailyScore2 <- bb2013$Lamb_SymptomsFC
+
+# extract ewe-specific data
+lamb.list.2013 <- vector("list", length(levels(bb2013$EWEID)))
+for(i in 1:length(lamb.list.2013)){
+  lamb.list.2013[[i]] <- subset(bb2013, EWEID == levels(bb2013$EWEID)[i])
+}
+
+mov.avg.mat.l2.2013 <- matrix(NA, ncol = range(bb2014$JulianDate)[2] - range(bb2014$JulianDate)[1], 
+                              nrow = length(levels(bb2013$EWEID)))
+for(i in 1:dim(mov.avg.mat.l2.2013)[1]){
+  lamb.dat.2013 <- lamb.list.2013[[i]]
+  for(j in 1:(range(bb2014$JulianDate)[2] - range(bb2014$JulianDate)[1] - 6)){
+    mov.avg.mat.l2.2013[i, j] <- mean(na.omit(subset(lamb.dat.2013, 
+                                                     JulianDate %in% seq(122 + j - 3, 122 + j + 3))$LambClinicalSignsDailyScore2))
+    mov.avg.mat.l2.2013[i, j] <- ifelse(is.na(mov.avg.mat.l2.2013[i, j]) == T, 0, 
+                                        mov.avg.mat.l2.2013[i, j])    
+  }
+}
+
+aggregate.clin.signs.l2.2013 <- apply(mov.avg.mat.l2.2013, 2, sum) / 4
+
+bb2014$LambClinicalSignsDailyScore2 <- bb2014$Lamb_SymptomsFC
+  
+# extract ewe-specific data
+lamb.list <- vector("list", length(levels(bb2014$EWEID)))
+for(i in 1:length(lamb.list)){
+  lamb.list[[i]] <- subset(bb2014, EWEID == levels(bb2014$EWEID)[i])
+}
+
+
+mov.avg.mat.l2 <- matrix(NA, ncol = range(bb2014$JulianDate)[2] - range(bb2014$JulianDate)[1], nrow = length(levels(bb2014$EWEID)))
+for(i in 1:dim(mov.avg.mat.l2)[1]){
+  lamb.dat <- lamb.list[[i]]
+  for(j in 1:(range(bb2014$JulianDate)[2] - range(bb2014$JulianDate)[1] - 6)){
+    mov.avg.mat.l2[i, j] <- mean(na.omit(subset(lamb.dat, JulianDate %in% seq(122 + j - 3, 122 + j + 3))$LambClinicalSignsDailyScore2))
+    mov.avg.mat.l2[i, j] <- ifelse(is.na(mov.avg.mat.l2[i, j]) == T, 0, mov.avg.mat.l2[i, j])    
+  }
+}
+
+lamb.time1 <- c(117, 117, 123, 125, 125, 125, 131, 132, 132, 132, 137)
+lamb.time2 <- c(183, 178, 145, 173, 163, 163, 183, 177, 175, 167, 139)
+
+# lambs per day from 120 to 270
+lamb.denom.14 <- c(rep(11, 19), rep(10, 6), rep(9, 18), rep(7, 4), rep(6, 6), rep(5, 2), rep(4, 2), rep(3, 1), rep(2, 5), rep(1, 96))
+aggregate.clin.signs.l2 <- apply(mov.avg.mat.l2, 2, sum) / lamb.denom.14
+
+```
+
+### Compiled version of bottom two panels
+
+```{r}
+# reordered so that both ewe dynamics are on a single plot, and both lamb dynamics are on the other
+# svg("./Plots/BBClinSignSeverity_20160202.svg", height = 6, width = 7)
+par(mfrow = c(2, 2), oma = c(2, 2, 1, 2), mar = c(2, 2, 1, 3), xpd = F)
+plot(0, 0, col = "black", type = "p", yaxt = "n", ylab = "", xlab = "Date", 
+     xaxt = "n", xlim = c(120, 260),  lty = 2, lwd = .75, ylim = c(0, 1.7), 
+     pch = 16, cex = .6)
+lines(lowess(aggregate.clin.signs.2013[1:153] ~ seq(124, 124 + 152), f = 1/4), 
+      col = "black",  lty = 1, lwd = 3)
+points(aggregate.clin.signs.2013[1:153] ~ seq(124, 124 + 152), pch = 16, cex = .6)
+points(aggregate.clin.signs[1:153] ~ seq(124, 124 + 152), pch = 16, cex = .6, col = "grey70")
+lines(lowess(aggregate.clin.signs[1:153] ~ seq(124, 124 + 152), f = 1/4), col = "grey70",  
+      lty = 1, lwd = 3)
+axis(side = 2, at = seq(0, 1.5, length.out = 4), 
+     label = round(seq(0, 1.5, length.out = 4), 2))
+mtext(side = 2, outer = F, line = 2, "Severity of clinical signs", las = 0)
+axis(las = 1, side = 1, at = 120 + c(0, 31, 61, 92, 123), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+leg.text <- c("2013", "2014")
+legend(x = 180, y = 1.77, leg.text, col = c("black", "grey70"), lwd = c(1, 1), lty = c(1, 1), 
+       pch = c(16, 16), pt.cex = c(.6, .6), bty = "n", cex = 1)
+mtext(side = 3, "Ewes")
+
+plot(0, 0, ylim = c(0, 1.7), col = "black", type = "p", yaxt = "n", ylab = "", xlab = "", 
+     xaxt = "n", xlim = c(120, 260), lty = 2, lwd = .75, pch = 16, cex = .6)
+lines(lowess(aggregate.clin.signs.l2.2013[1:153] ~ seq(124, 124 + 152), f = 1/8), 
+      col = "black",  lty = 1, lwd = 3)
+points(aggregate.clin.signs.l2.2013[1:153] ~ seq(124, 124 + 152), pch = 16, 
+       col = "black", lty = 2, cex = .6)
+lines(lowess(as.numeric(as.character(aggregate.clin.signs.l2[1:152])) ~ seq(124, 124 + 151), f = 1/20), 
+      col = "grey70",  lty = 1, lwd = 3)
+points(jitter(aggregate.clin.signs.l2, 0)[1:153] ~ seq(124, 124 + 152), pch = 16, 
+       cex = .6, col = "grey70")
+axis(side = 2, at = seq(0, 1.5, length.out = 4), 
+     label = round(seq(0, 1.5, length.out = 4), 2))
+axis(las = 1, side = 1, at = 120 + c(0, 31, 61, 92, 123), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+#mtext(side = 2, outer = F, line = 2, "", las = 0)
+leg.text <- c("2013", "2014")
+legend(x = 180, y = 1.77, leg.text, col = c("black", "grey70"), lwd = c(1, 1), lty = c(1, 1), 
+       pch = c(16, 16), pt.cex = c(.6, .6), bty = "n", cex = 1)
+mtext(side = 3, "Lambs")
+
+# Plot Kaplan-Meier curves for adults and lambs, 2014 and 2004-2013
+# svg("./Plots/KaplanMeierCurves_20160130.svg", width = 8, height = 4)
+# build adult Kaplan-Meier curves
+plot(ad.survfit, conf.int = T, xlab = "Date", ylab = "Survival", 
+     xlim = c(120, 250), col = c("grey60", "black"), lwd = c(1, 1), 
+     xaxt = "n")
+lines(ad.survfit, conf.int = F, xlab = "Date", ylab = "", 
+      main = "Ewes", xlim = c(120, 250), col = c("grey60", "black"), lwd = c(2, 2))
+
+# build legend and label x-axis with actual dates (as opposed to Julian)
+leg.text <- c("2014", "2004-2013")
+legend("bottomleft", leg.text, col = c("black", "grey60"), bty = "n", lwd = c(2, 2))
+axis(side = 1, at = c(120, 151, 181, 212, 243), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+mtext(side = 2, outer = F, line = 2, "Survival", las = 0)
+
+# build lamb Kaplan-Meier curves
+plot(lamb.survfit, conf.int = T, xlab = "Date", ylab = "Survival", 
+     xlim = c(120, 250), col = c("grey60", "black"), xaxt = "n")
+lines(lamb.survfit, conf.int = F, xlab = "Date", ylab = "", 
+      xlim = c(120, 250), col = c("grey60", "black"), lwd = c(2, 2))
+# label x-axis
+axis(side = 1, at = c(120, 151, 181, 212, 243), 
+     labels = c("May 1", "June 1", "July 1", "Aug 1", "Sept 1"))
+# dev.off()
+```
+
+## Figure 2
+
+```{r, echo=FALSE, fig.height = 4, fig.width = 6}
+#data <- read.csv("./Data/Movi_Serol_20160202.csv", header = T)
+
+data <- read.csv("./Data/Movi_Serol_20160302.csv", header = T)
+before.dat <- subset(data, Time.relative.to.outbreak == "Before")
+during.dat <- subset(data, Time.relative.to.outbreak == "During")
+after.dat <- subset(data, Time.relative.to.outbreak == "Post")
+
+before.binom.test <- t.test(x = before.dat$Movipneumonia.ELISA, conf.level = .9)$conf.int
+during.binom.test <- t.test(x = during.dat$Movipneumonia.ELISA, conf.level = .9)$conf.int
+after.binom.test <- t.test(x = after.dat$Movipneumonia.ELISA, conf.level = .9)$conf.int
+
+
+#svg("./Plots/MoviTiters_V6_20160217.svg", width = 3, height = 4)
+par(mfrow = c(1, 2))
+plot(data$Movipneumonia.ELISA ~ jitter(as.numeric(data$Time.relative.to.outbreak), .2), 
+     type = "p", xaxt = "n", ylab = "ELISA % Inhibition", xlab = "", pch = 1,
+     cex = .7, las = 1, col = "grey40",
+     ylim = c(40, 100))
+axis(side = 1, at = c(1, 2, 3), labels = c("Before", "During", "After"))
+segments(x0 = 1, x1 = 1, 
+         y0 = before.binom.test[[1]], y1 = before.binom.test[[2]], lwd = 1)
+segments(x0 = 2, x1 = 2, 
+         y0 = during.binom.test[[1]], y1 = during.binom.test[[2]], lwd = 1)
+segments(x0 = 3, x1 = 3, 
+         y0 = after.binom.test[[1]], y1 = after.binom.test[[2]], lwd = 1)
+segments(x0 = .95, x1 = 1.05, 
+         y0 = before.binom.test[[1]], y1 = before.binom.test[[1]], lwd = 1)
+segments(x0 = .95, x1 = 1.05, 
+         y0 = before.binom.test[[2]], y1 = before.binom.test[[2]], lwd = 1)
+segments(x0 = 1.95, x1 = 2.05, 
+         y0 = during.binom.test[[1]], y1 = during.binom.test[[1]], lwd = 1)
+segments(x0 = 1.95, x1 = 2.05, 
+         y0 = during.binom.test[[2]], y1 = during.binom.test[[2]], lwd = 1)
+segments(x0 = 2.95, x1 = 3.05, 
+         y0 = after.binom.test[[1]], y1 = after.binom.test[[1]], lwd = 1)
+segments(x0 = 2.95, x1 = 3.05, 
+         y0 = after.binom.test[[2]], y1 = after.binom.test[[2]], lwd = 1)
+segments(x0 = 2.975, x1 = 3.025, 
+         y0 = mean(after.dat$Movipneumonia.ELISA), y1 = mean(after.dat$Movipneumonia.ELISA), lwd = 1)
+segments(x0 = 1.975, x1 = 2.025, 
+         y0 = mean(during.dat$Movipneumonia.ELISA), y1 = mean(during.dat$Movipneumonia.ELISA), lwd = 1)
+segments(x0 = 0.975, x1 = 1.025, 
+         y0 = mean(before.dat$Movipneumonia.ELISA), y1 = mean(before.dat$Movipneumonia.ELISA), lwd = 1)
+mtext(side = 1, line = 3, "Time relative to outbreak")
+#dev.off()
+
+# Pre-outbreak ELISA for animals that died and survived, respectively. 
+survived <- subset(before.dat, Fate == "Survived")
+died <- subset(before.dat, Fate == "Died")
+survd.before.binom.test <- t.test(x = survived$Movipneumonia.ELISA, conf.level = .9)$conf.int
+died.before.binom.test <- t.test(x = died$Movipneumonia.ELISA, conf.level = .9)$conf.int
+
+# svg("./Plots/PreOutbreakELISAByFate_REVISED_20160302.svg",  height = 4, width = 3)
+plot(before.dat$Movipneumonia.ELISA ~ as.numeric(before.dat$Fate), 
+     type = "p", xaxt = "n", ylab = "ELISA % Inhibition", xlab = "", pch = 1,
+     cex = .7, las = 1, col = "grey40", xlim = c(.5, 2.5),
+     ylim = c(40, 100))
+segments(x0 = 1, x1 = 1, 
+         y0 = died.before.binom.test[[1]], y1 = died.before.binom.test[[2]], lwd = 1)
+segments(x0 = 2, x1 = 2, 
+         y0 = survd.before.binom.test[[1]], y1 = survd.before.binom.test[[2]], lwd = 1)
+segments(x0 = .95, x1 = 1.05, 
+         y0 = died.before.binom.test[[1]], y1 = died.before.binom.test[[1]], lwd = 1)
+segments(x0 = .95, x1 = 1.05, 
+         y0 = died.before.binom.test[[2]], y1 = died.before.binom.test[[2]], lwd = 1)
+segments(x0 = 1.95, x1 = 2.05, 
+         y0 = survd.before.binom.test[[1]], y1 = survd.before.binom.test[[1]], lwd = 1)
+segments(x0 = 1.95, x1 = 2.05, 
+         y0 = survd.before.binom.test[[2]], y1 = survd.before.binom.test[[2]], lwd = 1)
+segments(x0 = 1.975, x1 = 2.025, 
+         y0 = mean(survived$Movipneumonia.ELISA), y1 = mean(survived$Movipneumonia.ELISA), lwd = 1)
+segments(x0 = 0.975, x1 = 1.025, 
+         y0 = mean(died$Movipneumonia.ELISA), y1 = mean(died$Movipneumonia.ELISA), lwd = 1)
+text(x = 1, y = 95, "N = 5")
+text(x = 2, y = 95, "N = 6")
+axis(side = 1, at = c(1, 2), labels = c("Died", "Survived"))
+# dev.off()
+```
+

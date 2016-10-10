@@ -85,11 +85,15 @@ lamb.time2.2013 <- c(lamb.time2.2013, pre.2013.lamb.morts[c(-21)])
 lamb.event.2013 <- c(lamb.event.2013, merged.heller$CENSOR2[c(-21)])
 lamb.data.2013 <- as.data.frame(cbind(lamb.time1.2013, lamb.time2.2013, lamb.event.2013))
 
+
+
 # histograms of mort date for 2014 and 2004-2013
 par(mfrow = c(2, 1))
 breaks.in <- seq(120, 280, length.out = 17)
 hist(lamb.time2.2013, xlim = c(120, 240), breaks = breaks.in, xlab = "Julian date of lamb mortalities", main = "2004-2013", col = "grey60")
 hist(lamb.time2, xlim = c(120, 240), breaks = breaks.in, xlab = "Julian date of lamb mortalities", main = "2014", col = "grey60")
+
+source("~/work/Kezia/Research/EcologyPapers/BB14Outbreak/Code/KRMPlotsBayHaz_Source_05Dec2014.R")
 
 hypars.ad <- CPPpriorElicit(r0 = 0.001, H = 1, T00 = 200, M00 = 2, extra = 0)
 CPPplotHR(CPPpriorSample(ss = 10, hyp = hypars.ad), tu = "Year")
@@ -105,20 +109,30 @@ ecdf(ad.post.2013$sgm[ , ad.post.2013$hyp$F])(ad.post.2013$hyp$T00 + 3 * ad.post
 
 hypars.lamb <- CPPpriorElicit(r0 = 0.01, H = 1, T00 = 200, M00 = 3, extra = 0)
 CPPplotHR(CPPpriorSample(ss = 10, hyp = hypars.lamb), tu = "Year")
-# generate a posterior sample
 lamb.post <- CPPpostSample(hypars.lamb, times = (lamb.data$lamb.time2 - 120), obs = lamb.data$lamb.event)
 lamb.post.2013 <- CPPpostSample(hypars.lamb, times = (lamb.data.2013$lamb.time2.2013 - 120), obs = lamb.data.2013$lamb.event.2013)
-# check that no additional CPP jumps are needed:
-# if this probability is not negligible,
-# go back to prior selection stage and increase 'extra'
 ecdf(lamb.post$sgm[ , lamb.post$hyp$F])(lamb.post$hyp$T00 + 3 * lamb.post$hyp$sd)
 ecdf(lamb.post.2013$sgm[ , lamb.post.2013$hyp$F])(lamb.post.2013$hyp$T00 + 3 * lamb.post.2013$hyp$sd)
-# plot some posterior hazard rate summaries
 
-source("~/work/Kezia/Research/EcologyPapers/BB14Outbreak/Code/KRMPlotsBayHaz_Source_05Dec2014.R")
-par(mfrow = c(1, 2))
-krmCPPplotHR2samps_adults(ad.post.2013, ad.post, tu = "Day", title = "")
-krmCPPplotHR2samps_lambs(lamb.post.2013, lamb.post, tu = "Day", title = "")
+# par(mfrow = c(1, 2))
+# krmCPPplotHR2samps_adults(ad.post.2013, ad.post, tu = "Day", title = "")
+# krmCPPplotHR2samps_lambs(sample1 = lamb.post.2013, sample2 = lamb.post, tu = "Day", title = "")
+
+#------------------------------------------#
+#-- Plot: Ewe and lamb mortality hazards --#
+#------------------------------------------#
+# layout(matrix(c(1, 1, 2, 3, 3, 4), nrow = 1, byrow = T))
+# par(oma = c(2, 3, 3, 1), mar = c(4, 5, 2, 1))
+# krmCPPplotHR2samps_adults(ad.post.2013, ad.post, tu = "Day", title = "")
+# barplot(ad.prop.surv.tab[2, ], las = 1, names.arg = c("2004-13", "2014"), beside = T, xlab = "Years", ylim = c(0, 1), ylab = "Summer ewe mortalities")
+# krmCPPplotHR2samps_lambs(lamb.post.2013, lamb.post, tu = "Day", title = "")
+# barplot(lamb.prop.surv.tab[2, ], las = 1, names.arg = c("2004-13", "2014"), beside = T, xlab = "Years", ylim = c(0, 1), ylab = "Summer lamb mortalities")
+
+par(mfrow = c(2, 2), oma = c(1, 1, 1, 1))
+krmCPPplotHRintervals(sample1 = ad.post.2013, npts = 101, tu = "Time Unit", title = "Ewe Hazard, 2004-2013", max.haz.ad, max.haz.lamb)  
+krmCPPplotHRintervalsLambs(sample = lamb.post.2013, npts = 101, tu = "Time Unit", title = "Lamb Hazard, 2004-2013")
+krmCPPplotHRintervals(sample1 = ad.post, npts = 101, tu = "Time Unit", title = "Ewe Hazard, 2014", max.haz.ad, max.haz.lamb)  
+krmCPPplotHRintervalsLambs(sample = lamb.post, npts = 101, tu = "Time Unit", title = "Lamb Hazard, 2014")
 
 # Cox PH model for adults/lambs
 ad.full.time1 <- c(ad.time1.2013, ad.time1)
@@ -126,6 +140,7 @@ ad.full.time2 <- c(ad.time2.2013, ad.time2)
 ad.full.event <- c(ad.event.2013, ad.event)
 ad.full.year <- c(rep(0, length(ad.event.2013)), rep(1, length(ad.event)))
 coxph.ad <- coxph(Surv(ad.full.time1, ad.full.time2, ad.full.event) ~ factor(ad.full.year))
+plot(Surv(ad.full.time1, ad.full.time2, ad.full.event) ~ factor(ad.full.year))
 summary(coxph.ad)
 ad.surv.tab <- table(ad.full.event, ad.full.year)
 ad.prop.surv.tab <- cbind(ad.surv.tab[, 1] / sum(ad.surv.tab[ ,1]), ad.surv.tab[, 2] / sum(ad.surv.tab[ ,2]))
@@ -139,15 +154,47 @@ summary(coxph.lambs)
 lamb.surv.tab <- table(lamb.full.event, lamb.full.year)
 lamb.prop.surv.tab <- cbind(lamb.surv.tab[, 1] / sum(lamb.surv.tab[ ,1]), lamb.surv.tab[, 2] / sum(lamb.surv.tab[ ,2]))
 
-#------------------------------------------#
-#-- Plot: Ewe and lamb mortality hazards --#
-#------------------------------------------#
-layout(matrix(c(1, 1, 2, 3, 3, 4), nrow = 1, byrow = T))
-par(oma = c(2, 3, 3, 1), mar = c(4, 5, 2, 1))
-krmCPPplotHR2samps_adults(ad.post.2013, ad.post, tu = "Day", title = "")
-barplot(ad.prop.surv.tab[2, ], las = 1, names.arg = c("2004-13", "2014"), beside = T, xlab = "Years", ylim = c(0, 1), ylab = "Summer ewe mortalities")
-krmCPPplotHR2samps_lambs(lamb.post.2013, lamb.post, tu = "Day", title = "")
-barplot(lamb.prop.surv.tab[2, ], las = 1, names.arg = c("2004-13", "2014"), beside = T, xlab = "Years", ylim = c(0, 1), ylab = "Summer lamb mortalities")
+
+ad.survfit <- survfit(Surv(ad.full.time1, ad.full.time2, ad.full.event) ~ factor(ad.full.year))
+ad.survfit.2013 <- survfit(Surv(ad.time1.2013, ad.time2.2013, ad.event.2013) ~ 1)
+ad.survfit.2014 <- survfit(Surv(ad.time1, ad.time2, ad.event) ~ 1)
+
+lamb.survfit <- survfit(Surv(lamb.full.time1, lamb.full.time2, lamb.full.event) ~ factor(lamb.full.year))
+lamb.survfit.2013 <- survfit(Surv(lamb.time1.2013, lamb.time2.2013, lamb.event.2013) ~ 1)
+lamb.survfit.2014 <- survfit(Surv(lamb.time1, lamb.time2, lamb.event) ~ 1)
+
+par(mfrow = c(1, 2))
+plot(ad.survfit, conf.int = T, xlab = "Julian date", ylab = "Proportion surviving", 
+     main = "Ewes", xlim = c(120, 250))
+polygon(x = c(summary(ad.survfit.2013)$time, 250, 250, rev(summary(ad.survfit.2013)$time)), 
+        y = c(summary(ad.survfit.2013)$lower, summary(ad.survfit.2013)$lower[2], 
+              summary(ad.survfit.2013)$upper[2], rev(summary(ad.survfit.2013)$upper)), 
+        col = rgb(.2, .2, .2, alpha = .8))
+polygon(x = c(summary(ad.survfit.2014)$time, 250, 250, rev(summary(ad.survfit.2014)$time)), 
+        y = c(summary(ad.survfit.2014)$lower, summary(ad.survfit.2014)$lower[5], 
+              summary(ad.survfit.2014)$upper[5], rev(summary(ad.survfit.2014)$upper)), 
+        col = rgb(1, 0, 0, alpha = .5))
+leg.text <- c("2014", "2004-2013")
+legend("bottomleft", leg.text, fill = c(rgb(1, 0, 0, alpha = .5), rgb(.2, .2, .2, alpha = .8)), bty = "n")
+
+plot(lamb.survfit, conf.int = T, xlab = "Julian date", ylab = "Proportion surviving", 
+     main = "Lambs", xlim = c(120, 250))
+polygon(x = c(summary(lamb.survfit.2013)$time, 250, 250, 
+              rev(summary(lamb.survfit.2013)$time)), 
+        y = c(summary(lamb.survfit.2013)$lower, 
+              summary(lamb.survfit.2013)$lower[17], 
+              summary(lamb.survfit.2013)$upper[17], 
+              rev(summary(lamb.survfit.2013)$upper)), 
+        col = rgb(.2, .2, .2, alpha = .8))
+polygon(x = c(summary(lamb.survfit.2014)$time[1:9], 250, 250,
+              rev(summary(lamb.survfit.2014)$time[1:9])), 
+        y = c(summary(lamb.survfit.2014)$lower[1:8], 0,
+              0, 
+              summary(lamb.survfit.2014)$upper[8], 
+              summary(lamb.survfit.2014)$upper[8],
+              rev(summary(lamb.survfit.2014)$upper[1:8])), 
+        col = rgb(1, 0, 0, alpha = .5))
+
 
 #------------------------------------------#
 #-- moving average clinical signs : ewes --#
